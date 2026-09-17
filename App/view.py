@@ -1,12 +1,12 @@
 import sys
-
+import logic
 
 def new_logic():
     """
         Se crea una instancia del controlador
     """
-    #TODO: Llamar la función de la lógica donde se crean las estructuras de datos
-    pass
+    control = logic.new_logic()
+    return control
 
 def print_menu():
     print("Bienvenido")
@@ -23,8 +23,28 @@ def load_data(control):
     """
     Carga los datos
     """
-    #TODO: Realizar la carga de datos
-    pass
+    inicio = logic.get_time()
+    logic.load_data(control, "Data/chocolate_sale_100_ptc.csv")
+    fin = logic.get_time()
+    total = logic.total_pedidos(control)
+    total_pedidos_x_canal = logic.total_pedidos_por_canal(control)
+    fecha_antigua = logic.fecha_mas_antigua(control)
+    fecha_reciente = logic.fecha_mas_reciente(control)
+    pedido_minimo_amount = logic.menor_amount(control)
+    pedido_mayor_amount = logic.mayor_amount(control)
+    primeros_ultimos_5 = logic.first_last_5_pedidos(control)
+    time = logic.delta_time(inicio,fin)
+    resultado = {
+        "Tiempo de ejecución: ": time,
+        "Total pedidos: ": total,
+        "Total pedidos por canal: ": total_pedidos_x_canal,
+        "Pedido con fecha más antigua: ": fecha_antigua,
+        "Pedido con fecha más reciente: ": fecha_reciente,
+        "Pedido mínimo amount: ": pedido_minimo_amount,
+        "Pedido mayor amount: ": pedido_mayor_amount,
+        "Primeros y Últimos 5 pedidos (Organizados por Amount Descendente): ": primeros_ultimos_5,
+    }
+    return resultado
 
 
 def print_data(control, id):
