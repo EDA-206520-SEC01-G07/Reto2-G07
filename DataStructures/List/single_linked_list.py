@@ -12,9 +12,9 @@ def new_list():
         my_list: {'size': 0, 'first': None, 'last': None}
     """
     my_list = {
-        "size":0,
         "first":None,
-        "last":None
+        "last":None,
+        "size":0,
     }
     return my_list
 
