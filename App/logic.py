@@ -29,8 +29,7 @@ def new_logic():
 
 def load_data(catalog, filename):
     """
-    Carga los datos del reto en un solo recorrido del archivo.
-    Retorna el catalogo y el reporte de la carga.
+    Carga los datos del reto
     """
     start = get_time()
     with open(filename, encoding="utf-8-sig") as csvfile:
