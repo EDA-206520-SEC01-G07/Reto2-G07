@@ -1,5 +1,8 @@
 import sys
-import logic
+from App import logic
+from DataStructures.List import array_list as al
+from DataStructures.Map import map_linear_probing as mlp
+
 
 def new_logic():
     """
@@ -7,6 +10,7 @@ def new_logic():
     """
     control = logic.new_logic()
     return control
+
 
 def print_menu():
     print("Bienvenido")
@@ -19,33 +23,66 @@ def print_menu():
     print("6- Ejecutar Requerimiento 6")
     print("7- Salir")
 
+def print_pedido(pedido):
+    """
+    Imprime los campos de un pedido que pide el reporte de carga.
+    """
+    print(f"  Order_ID: {pedido['order_id']} | Product: {pedido['product']} | "
+          f"Country: {pedido['country']} | Channel: {pedido['channel']} | "
+          f"Order_Date: {pedido['order_date']} | Boxes_Shipped: {pedido['boxes_shipped']} | "
+          f"Price_per_Box: {pedido['price_per_box']:.2f} | Amount: {pedido['amount']:.2f}")
+
+
+def print_lista_pedidos(lista):
+    """
+    Imprime todos los pedidos de un array_list.
+    """
+    for i in range(al.size(lista)):
+        print_pedido(al.get_element(lista, i))
+
+
+def print_pedidos_por_canal(mapa_canales):
+    """
+    Imprime el número de pedidos de cada canal guardado en el mapa.
+    """
+    canales = mlp.key_set(mapa_canales)
+    for i in range(al.size(canales)):
+        canal = al.get_element(canales, i)
+        print(f"  {canal}: {mlp.get(mapa_canales, canal)}")
+
+data_file = "Data/chocolate_sale_20_ptc.csv"
+
 def load_data(control):
     """
-    Carga los datos
+    Carga los datos e imprime el reporte de la carga.
     """
-    inicio = logic.get_time()
-    logic.load_data(control, "Data/chocolate_sale_100_ptc.csv")
-    fin = logic.get_time()
-    total = logic.total_pedidos(control)
-    total_pedidos_x_canal = logic.total_pedidos_por_canal(control)
-    fecha_antigua = logic.fecha_mas_antigua(control)
-    fecha_reciente = logic.fecha_mas_reciente(control)
-    pedido_minimo_amount = logic.menor_amount(control)
-    pedido_mayor_amount = logic.mayor_amount(control)
-    primeros_ultimos_5 = logic.first_last_5_pedidos(control)
-    time = logic.delta_time(inicio,fin)
-    resultado = {
-        "Tiempo de ejecución: ": time,
-        "Total pedidos: ": total,
-        "Total pedidos por canal: ": total_pedidos_x_canal,
-        "Pedido con fecha más antigua: ": fecha_antigua,
-        "Pedido con fecha más reciente: ": fecha_reciente,
-        "Pedido mínimo amount: ": pedido_minimo_amount,
-        "Pedido mayor amount: ": pedido_mayor_amount,
-        "Primeros y Últimos 5 pedidos (Organizados por Amount Descendente): ": primeros_ultimos_5,
-    }
-    return resultado
+    archivo = data_file
+    control, reporte = logic.load_data(control, archivo)
 
+    print("\n========== REPORTE DE CARGA ==========")
+    print(f"Tiempo de ejecución: {reporte['tiempo_ms']:.2f} ms")
+    print(f"Total de pedidos cargados: {reporte['total_pedidos']}")
+
+    print("\nTotal de pedidos por canal:")
+    print_pedidos_por_canal(reporte["pedidos_por_canal"])
+
+    print("\nPedido con la fecha más antigua:")
+    print_pedido(reporte["pedido_mas_antiguo"])
+    print("\nPedido con la fecha más reciente:")
+    print_pedido(reporte["pedido_mas_reciente"])
+
+    print("\nPedido con el menor Amount:")
+    print_pedido(reporte["pedido_min_amount"])
+    print("\nPedido con el mayor Amount:")
+    print_pedido(reporte["pedido_max_amount"])
+
+    print("\nPrimeros 5 pedidos (Amount descendente):")
+    print_lista_pedidos(reporte["primeros_5_amount"])
+    print("\nÚltimos 5 pedidos (Amount descendente):")
+    print_lista_pedidos(reporte["ultimos_5_amount"])
+    print("======================================\n")
+
+    return control
 
 def print_data(control, id):
     """
