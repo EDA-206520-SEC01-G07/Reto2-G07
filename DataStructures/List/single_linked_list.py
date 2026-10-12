@@ -163,34 +163,19 @@ def delete_element(my_list, pos):
     """
     Elimina y retorna el elemento ubicado en la posición 'pos'.
     """
-    if size(my_list) == 0:
+    if pos < 0 or pos >= size(my_list):
         raise IndexError("Position out of range.")
-    elif pos >= size(my_list):
-        raise IndexError("Position out of range.")
-    elif size(my_list) == 1:
-        elemento = my_list["first"]
-        my_list["first"] = None
-        my_list["last"] = None
-        my_list["size"] -= 1
-        return elemento.pop("info")
-    elif pos == 0:
+    if pos == 0:
         return delete_first(my_list)
-    del_element = None
-    node = my_list["first"]
-    i = 0
-    found = False
-    previous = None
-    while i in range(0,size(my_list)) and not found:
-        if i == pos - 1:
-            previous = node
-        elif i == pos:
-            del_element = node
-            previous["next"] = node["next"]
-            found = True
-        i += 1
-        node = node["next"]
+    previous = my_list["first"]
+    for _ in range(pos - 1):
+        previous = previous["next"]
+    node = previous["next"]
+    previous["next"] = node["next"]
+    if node is my_list["last"]:
+        my_list["last"] = previous
     my_list["size"] -= 1
-    return del_element.pop("info")
+    return node["info"]
 
 def is_present(my_list, element, cmp_function):
     """
