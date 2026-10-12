@@ -5,6 +5,9 @@ import sys
 default_limit = 1000
 sys.setrecursionlimit(default_limit * 10)
 from DataStructures.List import array_list as al
+from DataStructures.Map import map_separate_chaining as msc
+from DataStructures.Map import map_linear_probing as mlp
+
 
 def new_logic():
     """
