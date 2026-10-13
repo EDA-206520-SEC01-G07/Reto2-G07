@@ -50,7 +50,7 @@ def print_pedidos_por_canal(mapa_canales):
         canal = al.get_element(canales, i)
         print(f"  {canal}: {mlp.get(mapa_canales, canal)}")
 
-data_file = "Data/chocolate_sale_20_ptc.csv"
+data_file = "Data/chocolate_sale_100_ptc.csv"
 
 def load_data(control):
     """
@@ -81,7 +81,7 @@ def load_data(control):
     print("\nÚltimos 5 pedidos (Amount descendente):")
     print_lista_pedidos(reporte["ultimos_5_amount"])
     print("======================================\n")
-
+    
     return control
 
 def print_data(control, id):

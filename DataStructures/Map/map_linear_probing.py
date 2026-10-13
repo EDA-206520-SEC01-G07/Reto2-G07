@@ -31,6 +31,7 @@ def new_map(num_elements, load_factor, prime = 109345121):
     while i < capacity:
         al.add_last(table, me.new_map_entry(None, None))
         i += 1
+    # Estructura map_linear_probing
     my_map = {
         'prime': prime,
         'capacity': capacity,
