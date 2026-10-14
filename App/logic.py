@@ -6,6 +6,7 @@ default_limit = 1000
 sys.setrecursionlimit(default_limit * 10)
 from DataStructures.List import array_list as al
 from DataStructures.Map import map_linear_probing as mlp
+from DataStructures.Map import map_entry as me
 
 
 def new_logic():
@@ -20,8 +21,9 @@ def new_logic():
             "pedido_max_amount": None,
             "pedido_min_amount": None,
             "pedidos_por_canal": mlp.new_map(3, 0.5)
-        }
+        },
         # Mapas de los requerimientos
+        "pedidos_por_pais": mlp.new_map(5, 0.5)
     }
     return catalog
 
@@ -39,6 +41,24 @@ def load_data(catalog, filename):
             al.add_last(catalog["pedidos"], pedido)
             actualizar_reporte_carga(catalog, pedido)
             # agregar_pedido_a_mapas(catalog, pedido)
+            # mapa req 1:
+            
+            # mapa req 2:
+            pedidos_pais = mlp.get(catalog['pedidos_por_pais'], pedido['country'])
+            if pedidos_pais is None:
+                lista = al.new_list()
+                al.add_last(lista, pedido)
+                catalog['pedidos_por_pais'] = mlp.put(catalog['pedidos_por_pais'], pedido['country'], lista)
+            else:
+                al.add_last(pedidos_pais, pedido)
+            # mapa req 3:
+            
+            # mapa req 4:
+            
+            # mapa req 5:
+            
+            # mapa req 6:
+                
     primeros, ultimos = first_last_5_pedidos(catalog)
     end = get_time()
 
@@ -152,13 +172,104 @@ def req_1(catalog):
     # TODO: Modificar el requerimiento 1
     pass
 
+    # Funciones Auxiliares Requerimiento 2:
 
-def req_2(catalog):
+def sort_crit_boxes_shipped(element_1, element_2):
+    """Es el sort criteria para organizar ascendentemente por boxes_shipped la lista filtrada de el req2.
+
+    Args:
+        element_1 (Any): Primer elemento a comparar
+        element_2 (Any): Segundo elemento a comparar
+
+    Returns:
+        bool: True si var1 es < var2
+    """
+    if element_1['boxes_shipped'] < element_2['boxes_shipped']:
+        return True
+    elif element_1['boxes_shipped'] > element_2['boxes_shipped']:
+        return False
+    elif element_1['order_date'].strip() > element_2['order_date'].strip():
+        return True
+    elif element_1['order_date'].strip() < element_2['order_date'].strip():
+        return False
+    if element_1['order_id'] < element_2['order_id']:
+        return True
+    else:
+        return False
+
+def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
+    mapa = catalog['pedidos_por_pais']
+    array_list = mlp.get(mapa, country)
+    filtered_list = al.new_list()
+    mapa_productos = mlp.new_map(100, 0.5)
+    suma_marketing_spend = 0
+    suma_amount = 0
+    producto_mas_frecuente = None
+    conteo_produ_frecuente = None
+    if array_list is None:
+        return (filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, conteo_produ_frecuente)
+    for i in range(0, al.size(array_list)):
+        pedido = al.get_element(array_list, i)
+        boxes_shipped_pedido = pedido['boxes_shipped']
+        if min_boxes_shipped <= boxes_shipped_pedido and max_boxes_shipped >= boxes_shipped_pedido:
+            pedidos_productos = mlp.get(mapa_productos, pedido['product'])
+            al.add_last(filtered_list, pedido)
+            if pedidos_productos is None:
+                conteo = 1
+                mapa_productos = mlp.put(mapa_productos, pedido['product'], conteo)
+            else:
+                mapa_productos = mlp.put(mapa_productos, pedido['product'], pedidos_productos + 1)
+            suma_marketing_spend += pedido['marketing_spend']
+            suma_amount += pedido['amount']
+            if producto_mas_frecuente is None:
+                producto_mas_frecuente = pedido
+                conteo_produ_frecuente = mlp.get(mapa_productos, pedido['product'])
+            else:
+                if conteo_produ_frecuente < mlp.get(mapa_productos, pedido['product']):
+                    producto_mas_frecuente = pedido
+                    conteo_produ_frecuente = mlp.get(mapa_productos, pedido['product'])
+                elif conteo_produ_frecuente == mlp.get(mapa_productos, pedido['product']):
+                    if producto_mas_frecuente['product'].casefold() > pedido['product'].casefold():
+                        producto_mas_frecuente = pedido
+                        conteo_produ_frecuente = mlp.get(mapa_productos, pedido['product']) 
+        
+    filtered_list = al.quick_sort(filtered_list, sort_crit_boxes_shipped)
+    return (filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, conteo_produ_frecuente)
+
+def req_2(catalog, country, min_boxes_shipped, max_boxes_shipped):
     """
     Retorna el resultado del requerimiento 2
     """
-    # TODO: Modificar el requerimiento 2
-    pass
+    start_time = get_time()
+    filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, numero_pedidos_producto = filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped)
+    
+    # Número total de pedidos que cumplieron el filtro.
+    pedidos_en_rango = al.size(filtered_list)
+    
+    # Número de productos distintos en el rango.
+    cantidad_productos_distintos = mlp.size(mapa_productos)
+    
+    # Promedio Marketing Spend y Amount
+    if pedidos_en_rango > 0:
+        promedio_marketing_spend = suma_marketing_spend / pedidos_en_rango
+        promedio_amount = suma_amount / pedidos_en_rango
+    else:
+        promedio_marketing_spend = 0
+        promedio_amount = 0
+    
+    result = {
+        'tiempo_de_ejecución': None,
+        'numero_total_pedidos_cumplieron_filtro': pedidos_en_rango,
+        'cantidad_productos_distintos_en_rango': cantidad_productos_distintos,
+        'promedio_marketing_spend': promedio_marketing_spend,
+        'promedio_amount': promedio_amount,
+        'producto_frecuente': producto_mas_frecuente,
+        'numero_de_pedidos': numero_pedidos_producto,
+        'pedidos_filtrados': filtered_list,
+    }
+    end_time = get_time()
+    result['tiempo_de_ejecución'] = delta_time(start_time, end_time)
+    return result
 
 
 def req_3(catalog):
