@@ -2,6 +2,7 @@ import sys
 from App import logic
 from DataStructures.List import array_list as al
 from DataStructures.Map import map_linear_probing as mlp
+from tabulate import tabulate
 
 
 def new_logic():
@@ -99,12 +100,65 @@ def print_req_1(control):
     pass
 
 
+def tabla_pedidos_req2(pedidos, inicio, fin):
+    """
+    Construye las filas de la tabla del Req 2 para los pedidos entre las posiciones inicio y fin.
+    """
+    filas = []
+    for i in range(inicio, fin):
+        pedido = al.get_element(pedidos, i)
+        filas.append([
+            pedido['order_id'],
+            pedido['product'],
+            pedido['channel'],
+            pedido['order_date'],
+            pedido['boxes_shipped'],
+            f"{pedido['price_per_box']:.2f}",
+            f"{pedido['marketing_spend']:.2f}",
+            f"{pedido['amount']:.2f}"
+        ])
+    encabezados = ["Order_ID", "Product", "Channel", "Order_Date",
+                   "Boxes_Shipped", "Price_per_Box", "Marketing_Spend", "Amount"]
+    return tabulate(filas, headers=encabezados, tablefmt="grid")
+
+
 def print_req_2(control):
     """
         Función que imprime la solución del Requerimiento 2 en consola
     """
-    # TODO: Imprimir el resultado del requerimiento 2
-    pass
+    pais = input("País: ").strip()
+    minimo = int(input("Número mínimo de cajas enviadas: "))
+    maximo = int(input("Número máximo de cajas enviadas: "))
+
+    result = logic.req_2(control, pais, minimo, maximo)
+
+    print("\n========== REQUERIMIENTO 2 ==========")
+    print(f"Tiempo de ejecución: {result['tiempo_de_ejecución']:.2f} ms")
+
+    total = result['numero_total_pedidos_cumplieron_filtro']
+    if total == 0:
+        print("No se encontraron pedidos para ese país y rango de cajas.")
+    else:
+        resumen = [
+            ["Total de pedidos que cumplieron el filtro", total],
+            ["Productos distintos en el resultado", result['cantidad_productos_distintos_en_rango']],
+            ["Promedio de Marketing_Spend", f"{result['promedio_marketing_spend']:.2f}"],
+            ["Promedio de Amount", f"{result['promedio_amount']:.2f}"],
+            ["Producto más frecuente", result['producto_frecuente']['product']],
+            ["Pedidos del producto más frecuente", result['numero_de_pedidos']]
+        ]
+        print(tabulate(resumen, tablefmt="grid"))
+
+        pedidos = result['pedidos_filtrados']
+        if total > 20:
+            print("\nPrimeros 10 pedidos:")
+            print(tabla_pedidos_req2(pedidos, 0, 10))
+            print("\nÚltimos 10 pedidos:")
+            print(tabla_pedidos_req2(pedidos, total - 10, total))
+        else:
+            print("\nPedidos:")
+            print(tabla_pedidos_req2(pedidos, 0, total))
+    print("=====================================\n")
 
 
 def print_req_3(control):
