@@ -51,7 +51,7 @@ def print_pedidos_por_canal(mapa_canales):
         canal = al.get_element(canales, i)
         print(f"  {canal}: {mlp.get(mapa_canales, canal)}")
 
-data_file = "Data/chocolate_sale_100_ptc.csv"
+data_file = "Data/chocolate_sale_100_pct.csv"
 
 def load_data(control):
     """
