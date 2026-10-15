@@ -89,8 +89,34 @@ def print_data(control, id):
     """
         Función que imprime un dato dado su ID
     """
-    #TODO: Realizar la función para imprimir un elemento
-    pass
+    pedidos = control['pedidos']
+    encontrado = None
+    i = 0
+    while i < al.size(pedidos) and encontrado is None:
+        pedido = al.get_element(pedidos, i)
+        if pedido['order_id'] == id.strip():
+            encontrado = pedido
+        i += 1
+
+    if encontrado is None:
+        print(f"No se encontró ningún pedido con Order_ID {id}.")
+    else:
+        fila = [[
+            encontrado['order_id'],
+            encontrado['product'],
+            encontrado['country'],
+            encontrado['channel'],
+            encontrado['order_date'],
+            f"{encontrado['discount_pct']:.2f}",
+            f"{encontrado['price_per_box']:.2f}",
+            f"{encontrado['marketing_spend']:.2f}",
+            encontrado['boxes_shipped'],
+            f"{encontrado['amount']:.2f}"
+        ]]
+        encabezados = ["Order_ID", "Product", "Country", "Channel", "Order_Date",
+                       "Discount_Pct", "Price_per_Box", "Marketing_Spend",
+                       "Boxes_Shipped", "Amount"]
+        print(tabulate(fila, headers=encabezados, tablefmt="grid"))
 
 
 def datos_cargados(control):
@@ -308,12 +334,56 @@ def print_req_4(control):
 
 # ---------------------------- Req 5 ----------------------------------
 
+def tabla_productos_req5(productos_top, inicio, fin):
+    """
+    Construye la tabla del Req 5 con los productos entre las posiciones inicio y fin.
+    """
+    filas = []
+    for i in range(inicio, fin):
+        top = al.get_element(productos_top, i)
+        filas.append([
+            top['product'],
+            top['num_pedidos'],
+            top['total_boxes'],
+            f"{top['total_amount']:.2f}",
+            f"{top['promedio_price_per_box']:.2f}",
+            f"{top['promedio_discount_pct']:.2f}",
+            f"{top['total_marketing']:.2f}"
+        ])
+    encabezados = ["Product", "Número de pedidos", "Total de Boxes_Shipped",
+                   "Recaudo total", "Price_per_Box promedio", "Discount_Pct promedio",
+                   "Marketing_Spend total"]
+    return tabulate(filas, headers=encabezados, tablefmt="grid")
+
 def print_req_5(control):
     """
         Función que imprime la solución del Requerimiento 5 en consola
     """
-    # TODO: Imprimir el resultado del requerimiento 5
-    print("\nEl requerimiento 5 aún no está implementado.\n")
+    n = int(input("Elija el top al que quiere ver: "))
+    pais = input("País: ").strip()
+    fecha_minima = input("Fecha inicial del periodo (YYYY-MM-DD): ").strip()
+    fecha_maxima = input("Fecha final del periodo (YYYY-MM-DD): ").strip()
+
+    result = logic.req_5(control, n, pais, fecha_minima, fecha_maxima)
+
+    print("\n========== REQUERIMIENTO 5 ==========")
+    print(f"Tiempo de ejecución: {result['tiempo_ejecucion']:.2f} ms")
+
+    total = result['num_total_pedidos_filtro']
+    if total == 0:
+        print("No se encontraron pedidos para ese país y rango de fechas.")
+    else:
+        resumen = [
+            ["Total de pedidos que cumplieron el filtro", total],
+            ["Productos distintos en el resultado", result['num_productos_diferentes']],
+            ["Recaudo total de los pedidos filtrados", f"{result['total_recaudo_pedidos_filtrados']:.2f}"]
+        ]
+        print(tabulate(resumen, tablefmt="grid"))
+
+        productos = result['productos_top']
+        print(f"\nTop {al.size(productos)} productos por recaudo:")
+        print(tabla_productos_req5(productos, 0, al.size(productos)))
+    print("=====================================\n")
 
 
 # ---------------------------- Req 6 ----------------------------------

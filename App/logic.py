@@ -324,17 +324,19 @@ def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
     """
     mapa = catalog['pedidos_por_pais']
     array_list = mlp.get(mapa, country)
-    filtered_list = al.new_list()
+    # Estructuras y acumuladores del filtro
+    filtered_list = al.new_list()           
     mapa_productos = mlp.new_map(100, 0.5)
     suma_marketing_spend = 0
     suma_amount = 0
-    producto_mas_frecuente = None
-    conteo_produ_frecuente = None
+    producto_mas_frecuente = None     
+    conteo_produ_frecuente = None        
     if array_list is None:
         return (filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, conteo_produ_frecuente)
     for i in range(0, al.size(array_list)):
         pedido = al.get_element(array_list, i)
         boxes_shipped_pedido = pedido['boxes_shipped']
+        # Filtro por rango de cajas
         if min_boxes_shipped <= boxes_shipped_pedido and max_boxes_shipped >= boxes_shipped_pedido:
             pedidos_productos = mlp.get(mapa_productos, pedido['product'])
             al.add_last(filtered_list, pedido)
@@ -344,9 +346,11 @@ def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
                 mapa_productos = mlp.put(mapa_productos, pedido['product'], conteo)
             else:
                 mapa_productos = mlp.put(mapa_productos, pedido['product'], pedidos_productos + 1)
+            # Sumas para los promedios
             suma_marketing_spend += pedido['marketing_spend']
             suma_amount += pedido['amount']
-            # Producto mas frecuente (desempate: nombre alfabeticamente menor)
+
+            # Producto más frecuente
             if producto_mas_frecuente is None:
                 producto_mas_frecuente = pedido
                 conteo_produ_frecuente = mlp.get(mapa_productos, pedido['product'])
@@ -368,14 +372,12 @@ def req_2(catalog, country, min_boxes_shipped, max_boxes_shipped):
     Boxes_Shipped dentro de un rango (inclusivo).
     """
     start_time = get_time()
-    filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, numero_pedidos_producto = filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped)
 
+    filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, numero_pedidos_producto = filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped)
     # Numero total de pedidos que cumplieron el filtro
     pedidos_en_rango = al.size(filtered_list)
-
     # Numero de productos distintos en el rango
     cantidad_productos_distintos = mlp.size(mapa_productos)
-
     # Promedios de Marketing_Spend y Amount
     if pedidos_en_rango > 0:
         promedio_marketing_spend = suma_marketing_spend / pedidos_en_rango
@@ -541,6 +543,17 @@ def req_4(catalog, producto, pais):
 #  Requerimiento 5: Top N productos por recaudo (pais y rango de fechas)
 
 def sort_crit_recaudo_total(element1, element2):
+    """
+    Criterio de ordenamiento del Req 5: recaudo total descendente, luego
+    total de cajas descendente y luego nombre del producto ascendente.
+
+    Args:
+        element1 (dict): Registro acumulado del primer producto.
+        element2 (dict): Registro acumulado del segundo producto.
+
+    Returns:
+        bool: True si element1 debe ir antes que element2.
+    """
     if element1['total_amount'] > element2['total_amount']:
         return True
     elif element1['total_amount'] < element2['total_amount']:
@@ -555,19 +568,34 @@ def sort_crit_recaudo_total(element1, element2):
         return False
 
 def filtrado_req5(catalog, country, initial_date, final_date):
+    """
+    Filtra los pedidos del pais por rango de fechas y acumula, por producto,
+    los datos que pide el requerimiento.
+
+    Returns:
+        tuple: (mapa producto -> registro acumulado,
+                recaudo total del filtro, numero de pedidos del filtro)
+    """
     mapa = catalog['pedidos_por_pais']
     array_list = mlp.get(mapa, country)
+
     mapa_productos = mlp.new_map(100, 0.5)
     recaudo_total_filtro = 0
     pedidos_en_filtro = 0
+    
     if array_list is None:
         return (mapa_productos, recaudo_total_filtro, pedidos_en_filtro)
+
     for i in range(0, al.size(array_list)):
         pedido = al.get_element(array_list, i)
         order_date = pedido['order_date']
+
+        # Filtro por rango de fechas
         if order_date.strip() >= initial_date.strip() and order_date.strip() <= final_date.strip():
+            # Totales generales del filtro
             pedidos_en_filtro += 1
             recaudo_total_filtro += pedido['amount']
+
             producto_en_mapa = mlp.get(mapa_productos, pedido['product'])
             if producto_en_mapa is None:
                 info = {
@@ -591,29 +619,40 @@ def filtrado_req5(catalog, country, initial_date, final_date):
 
 def req_5(catalog, N, country, initial_date, final_date):
     """
-    Retorna el resultado del requerimiento 5
+    Retorna el resultado del requerimiento 5: los N productos con mayor
+    recaudo para un pais en un rango de fechas (inclusivo).
     """
     start_time = get_time()
+
     mapa_productos, recaudo_total_filtro, pedidos_en_filtro = filtrado_req5(catalog, country, initial_date, final_date)
+
+    # Registros de los productos en un array_list para poder ordenarlos
     values = mlp.value_set(mapa_productos)
-    
+
     ordered_products = al.quick_sort(values, sort_crit_recaudo_total)
+
     if N >= mlp.size(mapa_productos):
         top = al.sub_list(ordered_products, 0, mlp.size(mapa_productos))
     else:
         top = al.sub_list(ordered_products, 0, N)
+
+    # Promedios solo para los productos del top
     for i in range(0, al.size(top)):
         registro = al.get_element(top, i)
         registro['promedio_price_per_box'] = registro['suma_price_per_box'] / registro['num_pedidos']
         registro['promedio_discount_pct'] = registro['suma_discount'] / registro['num_pedidos']
+
+    # Resultado para la vista
     result = {
         'tiempo_ejecucion': None,
         'num_total_pedidos_filtro': pedidos_en_filtro,
         'num_productos_diferentes': mlp.size(mapa_productos),
         'total_recaudo_pedidos_filtrados': recaudo_total_filtro,
         'productos_top': top
-        
+
     }
+
+    # Tiempo solo del requerimiento
     end_time = get_time()
     result['tiempo_ejecucion'] = delta_time(start_time, end_time)
     return result
