@@ -9,9 +9,19 @@ from DataStructures.Map import map_linear_probing as mlp
 from DataStructures.Map import map_entry as me
 
 
+#  1. CATALOGO
+
 def new_logic():
     """
-    Crea el catalogo para almacenar las estructuras de datos
+    Crea el catalogo donde se almacenan la lista de pedidos y los mapas
+    que usan los requerimientos.
+
+    Llaves de los mapas (el valor siempre es una lista de pedidos):
+        pedidos_por_pais          -> pais                 (Req 2 y Req 5)
+        pedidos_por_mes           -> "YYYY-MM"            (Req 1)
+        pedidos_por_fecha         -> "YYYY-MM-DD"         (Req 3)
+        pedidos_por_producto_pais -> (producto, pais)     (Req 4)
+        pedidos_por_producto      -> producto             (Req 6)
     """
     catalog = {
         "pedidos": al.new_list(),
@@ -23,15 +33,25 @@ def new_logic():
             "pedidos_por_canal": mlp.new_map(3, 0.5)
         },
         # Mapas de los requerimientos
-        "pedidos_por_pais": mlp.new_map(5, 0.5)
+        "pedidos_por_pais": mlp.new_map(5, 0.5),
+        "pedidos_por_mes": mlp.new_map(24, 0.5),
+        "pedidos_por_fecha": mlp.new_map(730, 0.5),
+        "pedidos_por_producto_pais": mlp.new_map(300, 0.5),
+        "pedidos_por_producto": mlp.new_map(30, 0.5)
     }
     return catalog
 
-# Funciones para la carga de datos
+#  CARGA DE DATOS
 
 def load_data(catalog, filename):
     """
-    Carga los datos del reto
+    Carga los datos del reto leyendo el CSV una sola vez.
+
+    Por cada fila: crea el pedido, lo guarda en la lista principal,
+    actualiza el reporte de carga y lo agrega a los mapas.
+
+    Returns:
+        tuple: (catalogo, reporte de carga)
     """
     start = get_time()
     with open(filename, encoding="utf-8-sig") as csvfile:
@@ -40,25 +60,8 @@ def load_data(catalog, filename):
             pedido = crear_pedido(row)
             al.add_last(catalog["pedidos"], pedido)
             actualizar_reporte_carga(catalog, pedido)
-            # agregar_pedido_a_mapas(catalog, pedido)
-            # mapa req 1:
-            
-            # mapa req 2:
-            pedidos_pais = mlp.get(catalog['pedidos_por_pais'], pedido['country'])
-            if pedidos_pais is None:
-                lista = al.new_list()
-                al.add_last(lista, pedido)
-                catalog['pedidos_por_pais'] = mlp.put(catalog['pedidos_por_pais'], pedido['country'], lista)
-            else:
-                al.add_last(pedidos_pais, pedido)
-            # mapa req 3:
-            
-            # mapa req 4:
-            
-            # mapa req 5:
-            
-            # mapa req 6:
-                
+            agregar_pedido_a_mapas(catalog, pedido)
+
     primeros, ultimos = first_last_5_pedidos(catalog)
     end = get_time()
 
@@ -79,6 +82,12 @@ def load_data(catalog, filename):
 def crear_pedido(row):
     """
     Convierte una fila del CSV en un pedido con los tipos correctos.
+ 
+    Args:
+        row (dict): Fila leida por csv.DictReader.
+ 
+    Returns:
+        dict: Pedido con sus campos ya convertidos (float, int, str).
     """
     return {
         "order_id": row["Order_ID"].strip(),
@@ -93,10 +102,10 @@ def crear_pedido(row):
         "amount": float(row["Amount"])
     }
 
-
 def actualizar_reporte_carga(catalog, pedido):
     """
-    Actualiza los acumulados del reporte de carga con un pedido nuevo.
+    Actualiza los acumulados del reporte de carga con un pedido nuevo:
+    pedido mas antiguo/reciente, Amount minimo/maximo y conteo por canal.
     """
     reporte = catalog["reporte_carga"]
 
@@ -122,11 +131,10 @@ def actualizar_reporte_carga(catalog, pedido):
         cantidad = 0
     reporte["pedidos_por_canal"] = mlp.put(canales, pedido["channel"], cantidad + 1)
 
-
 def agregar_a_mapa_lista(catalog, nombre_mapa, llave, pedido):
     """
-    Agrega un pedido a la lista asociada a una llave dentro de un mapa del catalogo.
-    Si la llave no existe, crea la lista y la inserta en el mapa.
+    Agrega un pedido a la lista asociada a una llave dentro de un mapa del
+    catalogo. Si la llave no existe, crea la lista y la inserta en el mapa.
 
     Args:
         catalog (dict): Catalogo con los mapas.
@@ -144,16 +152,14 @@ def agregar_a_mapa_lista(catalog, nombre_mapa, llave, pedido):
     else:
         al.add_last(lista, pedido)
 
-
 def agregar_pedido_a_mapas(catalog, pedido):
     """
-    Agrega un pedido a los mapas de los requerimientos.
-    Se llama una vez por cada pedido durante la carga.
-    Complejidad por pedido: O(1) promedio.
+    Agrega un pedido a todos los mapas de los requerimientos.
+    Se llama una vez por pedido durante la carga. Costo: O(1) promedio.
     """
     # Req 1: llave "YYYY-MM"
     agregar_a_mapa_lista(catalog, "pedidos_por_mes", pedido["order_date"][:7], pedido)
-    # Req 2: llave pais
+    # Req 2 y Req 5: llave pais
     agregar_a_mapa_lista(catalog, "pedidos_por_pais", pedido["country"], pedido)
     # Req 3: llave "YYYY-MM-DD"
     agregar_a_mapa_lista(catalog, "pedidos_por_fecha", pedido["order_date"], pedido)
@@ -162,18 +168,17 @@ def agregar_pedido_a_mapas(catalog, pedido):
     agregar_a_mapa_lista(catalog, "pedidos_por_producto_pais", llave_prod_pais, pedido)
     # Req 6: llave producto
     agregar_a_mapa_lista(catalog, "pedidos_por_producto", pedido["product"], pedido)
-
-
+ 
 def total_pedidos(catalog):
     """
     Da el total de pedidos cargados.
     """
     return al.size(catalog["pedidos"])
-
+ 
 def criterio_por_amount_descendente(pedido1, pedido2):
     """
-    True si pedido1 va antes que pedido2: orden descendente por Amount,
-    con Order_ID ascendente como desempate.
+    True si pedido1 va antes que pedido2: Amount descendente y,
+    como desempate, Order_ID ascendente.
     """
     if pedido1["amount"] > pedido2["amount"]:
         return True
@@ -181,7 +186,7 @@ def criterio_por_amount_descendente(pedido1, pedido2):
         return False
     else:
         return pedido1["order_id"] < pedido2["order_id"]
-
+ 
 def ord_pedidos_amount(catalog):
     """
     Retorna la lista de pedidos ordenada de manera descendente por Amount.
@@ -190,11 +195,11 @@ def ord_pedidos_amount(catalog):
     pedidos = catalog["pedidos"]
     ord_list = al.merge_sort(pedidos, criterio_por_amount_descendente)
     return ord_list
-
+ 
 def first_last_5_pedidos(catalog):
     """
-    Retorna una tupla (primeros_5, ultimos_5) de la lista ordenada
-    descendente por Amount.
+    Retorna una tupla (primeros_5, ultimos_5) tomada de la lista ordenada
+    de manera descendente por Amount.
     """
     ord_list = ord_pedidos_amount(catalog)
     total = al.size(ord_list)
@@ -206,11 +211,9 @@ def first_last_5_pedidos(catalog):
     ultimos = al.sub_list(ord_list, total - n, n)
     return (primeros, ultimos)
 
-# Requerimientos del Reto:
+#  REQUERIMIENTOS
 
-# =====================================================================
-# Requerimiento 1
-# =====================================================================
+#  Requerimiento 1: Pedidos por mes y rango de descuento
 
 def criterio_req1(pedido1, pedido2):
     """
@@ -228,13 +231,14 @@ def criterio_req1(pedido1, pedido2):
     else:
         return pedido1["order_id"] < pedido2["order_id"]
 
-
 def filtrar_req1(catalog, anio, mes, desc_min, desc_max):
     """
-    Obtiene del mapa los pedidos del mes y filtra los que estan en el rango de descuento.
-
+    Obtiene del mapa los pedidos del mes y se queda con los que tienen
+    Discount_Pct dentro del rango (extremos incluidos).
+ 
     Returns:
-        tuple: (lista filtrada, suma de Amount, suma de Price_per_Box, suma de Boxes_Shipped)
+        tuple: (lista filtrada, suma de Amount, suma de Price_per_Box,
+                suma de Boxes_Shipped)
     """
     llave = f"{anio}-{mes:02d}"
     candidatos = mlp.get(catalog["pedidos_por_mes"], llave)
@@ -251,7 +255,6 @@ def filtrar_req1(catalog, anio, mes, desc_min, desc_max):
                 suma_precio += pedido["price_per_box"]
                 suma_cajas += pedido["boxes_shipped"]
     return filtrados, suma_amount, suma_precio, suma_cajas
-
 
 def req_1(catalog, anio, mes, desc_min, desc_max):
     """
@@ -281,19 +284,19 @@ def req_1(catalog, anio, mes, desc_min, desc_max):
         "pedidos": filtrados
     }
 
-# =====================================================================
-# Requerimiento 2
-# =====================================================================
+#  Requerimiento 2: Pedidos por pais y rango de cajas enviadas
 
 def sort_crit_boxes_shipped(element_1, element_2):
-    """Es el sort criteria para organizar ascendentemente por boxes_shipped la lista filtrada de el req2.
+    """
+    Criterio de ordenamiento del Req 2: Boxes_Shipped ascendente, luego
+    Order_Date descendente y luego Order_ID ascendente.
 
     Args:
-        element_1 (Any): Primer elemento a comparar
-        element_2 (Any): Segundo elemento a comparar
+        element_1 (dict): Primer pedido a comparar.
+        element_2 (dict): Segundo pedido a comparar.
 
     Returns:
-        bool: True si var1 es < var2
+        bool: True si element_1 debe ir antes que element_2.
     """
     if element_1['boxes_shipped'] < element_2['boxes_shipped']:
         return True
@@ -309,6 +312,16 @@ def sort_crit_boxes_shipped(element_1, element_2):
         return False
 
 def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
+    """
+    Filtra los pedidos del pais por rango de cajas enviadas y calcula los
+    acumulados del requerimiento (sumas, conteo por producto y producto
+    mas frecuente).
+
+    Returns:
+        tuple: (lista filtrada y ordenada, mapa producto -> conteo,
+                suma de Marketing_Spend, suma de Amount,
+                pedido del producto mas frecuente, conteo de ese producto)
+    """
     mapa = catalog['pedidos_por_pais']
     array_list = mlp.get(mapa, country)
     filtered_list = al.new_list()
@@ -325,6 +338,7 @@ def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
         if min_boxes_shipped <= boxes_shipped_pedido and max_boxes_shipped >= boxes_shipped_pedido:
             pedidos_productos = mlp.get(mapa_productos, pedido['product'])
             al.add_last(filtered_list, pedido)
+            # Conteo de pedidos por producto
             if pedidos_productos is None:
                 conteo = 1
                 mapa_productos = mlp.put(mapa_productos, pedido['product'], conteo)
@@ -332,6 +346,7 @@ def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
                 mapa_productos = mlp.put(mapa_productos, pedido['product'], pedidos_productos + 1)
             suma_marketing_spend += pedido['marketing_spend']
             suma_amount += pedido['amount']
+            # Producto mas frecuente (desempate: nombre alfabeticamente menor)
             if producto_mas_frecuente is None:
                 producto_mas_frecuente = pedido
                 conteo_produ_frecuente = mlp.get(mapa_productos, pedido['product'])
@@ -349,18 +364,19 @@ def filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped):
 
 def req_2(catalog, country, min_boxes_shipped, max_boxes_shipped):
     """
-    Retorna el resultado del requerimiento 2
+    Retorna el resultado del requerimiento 2: pedidos de un pais con
+    Boxes_Shipped dentro de un rango (inclusivo).
     """
     start_time = get_time()
     filtered_list, mapa_productos, suma_marketing_spend, suma_amount, producto_mas_frecuente, numero_pedidos_producto = filtrado_req2(catalog, country, min_boxes_shipped, max_boxes_shipped)
 
-    # Número total de pedidos que cumplieron el filtro.
+    # Numero total de pedidos que cumplieron el filtro
     pedidos_en_rango = al.size(filtered_list)
 
-    # Número de productos distintos en el rango.
+    # Numero de productos distintos en el rango
     cantidad_productos_distintos = mlp.size(mapa_productos)
 
-    # Promedio Marketing Spend y Amount
+    # Promedios de Marketing_Spend y Amount
     if pedidos_en_rango > 0:
         promedio_marketing_spend = suma_marketing_spend / pedidos_en_rango
         promedio_amount = suma_amount / pedidos_en_rango
@@ -382,14 +398,13 @@ def req_2(catalog, country, min_boxes_shipped, max_boxes_shipped):
     result['tiempo_de_ejecución'] = delta_time(start_time, end_time)
     return result
 
-# =====================================================================
-# Requerimiento 3
-# =====================================================================
-
+#  Requerimiento 3: Pedidos de una fecha y rango de costo total
+ 
 def criterio_req3(pedido1, pedido2):
     """
     True si pedido1 va antes que pedido2: Amount descendente, luego
-    Aporte comercial (Amount - Marketing_Spend) descendente y luego Order_ID ascendente.
+    Aporte comercial (Amount - Marketing_Spend) descendente y luego
+    Order_ID ascendente.
     """
     aporte1 = pedido1["amount"] - pedido1["marketing_spend"]
     aporte2 = pedido2["amount"] - pedido2["marketing_spend"]
@@ -404,10 +419,10 @@ def criterio_req3(pedido1, pedido2):
     else:
         return pedido1["order_id"] < pedido2["order_id"]
 
-
 def filtrar_req3(catalog, fecha, monto_min, monto_max):
     """
-    Obtiene del mapa los pedidos de la fecha y filtra los que estan en el rango de Amount.
+    Obtiene del mapa los pedidos de la fecha y se queda con los que tienen
+    Amount dentro del rango (extremos incluidos).
 
     Returns:
         tuple: (lista filtrada, suma de Amount, suma de Marketing_Spend)
@@ -424,7 +439,6 @@ def filtrar_req3(catalog, fecha, monto_min, monto_max):
                 suma_amount += pedido["amount"]
                 suma_marketing += pedido["marketing_spend"]
     return filtrados, suma_amount, suma_marketing
-
 
 def req_3(catalog, fecha, monto_min, monto_max):
     """
@@ -448,9 +462,7 @@ def req_3(catalog, fecha, monto_min, monto_max):
         "pedidos": filtrados
     }
 
-# =====================================================================
-# Requerimiento 4
-# =====================================================================
+#  Requerimiento 4: Precio promedio de una combinacion Producto-Pais
 
 def mejor_pedido_req4(pedido1, pedido2):
     """
@@ -468,16 +480,116 @@ def mejor_pedido_req4(pedido1, pedido2):
     else:
         return pedido1["order_id"] < pedido2["order_id"]
 
-
 def req_4(catalog, producto, pais):
     """
-    Retorna el resultado del requerimiento 4
+    Retorna el resultado del requerimiento 4: estadisticas de la combinacion
+    Producto-Pais y los 2 pedidos de mayor Amount.
+ 
+    Complejidad: O(1) para el get de la llave (producto, pais) + O(k) para
+    recorrer el grupo una sola vez (sumas y top 2), donde k = pedidos de la
+    combinacion. No hace falta ordenar: el top 2 se mantiene en una pasada.
     """
-    # TODO: Modificar el requerimiento 4
-    pass
+    start = get_time()
+    candidatos = mlp.get(catalog["pedidos_por_producto_pais"], (producto, pais))
+    suma_precio = 0
+    suma_descuento = 0
+    suma_marketing = 0
+    suma_cajas = 0
+    primero = None
+    segundo = None
+    total = 0
+    if candidatos is not None:
+        total = al.size(candidatos)
+        for i in range(total):
+            pedido = al.get_element(candidatos, i)
+            suma_precio += pedido["price_per_box"]
+            suma_descuento += pedido["discount_pct"]
+            suma_marketing += pedido["marketing_spend"]
+            suma_cajas += pedido["boxes_shipped"]
+            # Se mantienen los dos mejores pedidos
+            if primero is None or mejor_pedido_req4(pedido, primero):
+                segundo = primero
+                primero = pedido
+            elif segundo is None or mejor_pedido_req4(pedido, segundo):
+                segundo = pedido
+    top_2 = al.new_list()
+    if primero is not None:
+        al.add_last(top_2, primero)
+    if segundo is not None:
+        al.add_last(top_2, segundo)
+    if total > 0:
+        promedio_precio = suma_precio / total
+        promedio_descuento = suma_descuento / total
+        promedio_marketing = suma_marketing / total
+        promedio_cajas = suma_cajas / total
+    else:
+        promedio_precio = 0
+        promedio_descuento = 0
+        promedio_marketing = 0
+        promedio_cajas = 0
+    end = get_time()
+    return {
+        "tiempo_ms": delta_time(start, end),
+        "total_pedidos": total,
+        "promedio_precio": promedio_precio,
+        "promedio_descuento": promedio_descuento,
+        "promedio_marketing": promedio_marketing,
+        "promedio_cajas": promedio_cajas,
+        "top_2": top_2
+    }
 
+#  Requerimiento 5: Top N productos por recaudo (pais y rango de fechas)
 
-def req_5(catalog):
+def sort_crit_recaudo_total(element1, element2):
+    if element1['total_amount'] > element2['total_amount']:
+        return True
+    elif element1['total_amount'] < element2['total_amount']:
+        return False
+    elif element1['total_boxes'] > element2['total_boxes']:
+        return True
+    elif element1['total_boxes'] < element2['total_boxes']:
+        return False
+    elif element1['product'].casefold() < element2['product'].casefold():
+        return True
+    else:
+        return False
+
+def filtrado_req5(catalog, country, initial_date, final_date):
+    mapa = catalog['pedidos_por_pais']
+    array_list = mlp.get(mapa, country)
+    mapa_productos = mlp.new_map(100, 0.5)
+    recaudo_total_filtro = 0
+    pedidos_en_filtro = 0
+    if array_list is None:
+        return (mapa_productos, recaudo_total_filtro, pedidos_en_filtro)
+    for i in range(0, al.size(array_list)):
+        pedido = al.get_element(array_list, i)
+        order_date = pedido['order_date']
+        if order_date.strip() >= initial_date.strip() and order_date.strip() <= final_date.strip():
+            pedidos_en_filtro += 1
+            recaudo_total_filtro += pedido['amount']
+            producto_en_mapa = mlp.get(mapa_productos, pedido['product'])
+            if producto_en_mapa is None:
+                info = {
+                    'product': pedido['product'],
+                    'num_pedidos': 1,
+                    'total_boxes': pedido['boxes_shipped'],
+                    'total_amount': pedido['amount'],
+                    'suma_price_per_box': pedido['price_per_box'],
+                    'suma_discount': pedido['discount_pct'],
+                    'total_marketing': pedido['marketing_spend'],
+                }
+                mapa_productos = mlp.put(mapa_productos, pedido['product'], info)
+            else:
+                producto_en_mapa['num_pedidos'] += 1
+                producto_en_mapa['total_boxes'] += pedido['boxes_shipped']
+                producto_en_mapa['total_amount'] += pedido['amount']
+                producto_en_mapa['suma_price_per_box'] += pedido['price_per_box']
+                producto_en_mapa['suma_discount'] += pedido['discount_pct']
+                producto_en_mapa['total_marketing'] += pedido['marketing_spend']
+    return (mapa_productos, recaudo_total_filtro, pedidos_en_filtro)
+
+def req_5(catalog, N, country, initial_date, final_date):
     """
     Retorna el resultado del requerimiento 5
     """
@@ -506,9 +618,7 @@ def req_5(catalog):
     result['tiempo_ejecucion'] = delta_time(start_time, end_time)
     return result
 
-# =====================================================================
 # Requerimiento 6
-# =====================================================================
 
 def criterio_req6(pais1, pais2):
     """
