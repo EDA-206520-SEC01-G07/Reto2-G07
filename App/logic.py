@@ -298,17 +298,14 @@ def sort_crit_boxes_shipped(element_1, element_2):
     Returns:
         bool: True si element_1 debe ir antes que element_2.
     """
-    # 1er criterio: menos cajas va primero
     if element_1['boxes_shipped'] < element_2['boxes_shipped']:
         return True
     elif element_1['boxes_shipped'] > element_2['boxes_shipped']:
         return False
-    # 2do criterio (empate en cajas): fecha más reciente va primero
     elif element_1['order_date'].strip() > element_2['order_date'].strip():
         return True
     elif element_1['order_date'].strip() < element_2['order_date'].strip():
         return False
-    # 3er criterio (empate en fecha): Order_ID menor va primero
     if element_1['order_id'] < element_2['order_id']:
         return True
     else:
