@@ -23,7 +23,7 @@ def new_logic():
             "pedidos_por_canal": mlp.new_map(3, 0.5)
         },
         # Mapas de los requerimientos
-        "pedidos_por_pais": mlp.new_map(5, 0.5)
+        "pedidos_por_pais": mlp.new_map(5, 0.5),
     }
     return catalog
 
@@ -56,7 +56,7 @@ def load_data(catalog, filename):
             # mapa req 4:
             
             # mapa req 5:
-            
+            # Se usa el mismo que el req 2.
             # mapa req 6:
                 
     primeros, ultimos = first_last_5_pedidos(catalog)
@@ -287,13 +287,83 @@ def req_4(catalog):
     # TODO: Modificar el requerimiento 4
     pass
 
+def sort_crit_recaudo_total(element1, element2):
+    if element1['total_amount'] > element2['total_amount']:
+        return True
+    elif element1['total_amount'] < element2['total_amount']:
+        return False
+    elif element1['total_boxes'] > element2['total_boxes']:
+        return True
+    elif element1['total_boxes'] < element2['total_boxes']:
+        return False
+    elif element1['product'].casefold() < element2['product'].casefold():
+        return True
+    else:
+        return False
 
-def req_5(catalog):
+def filtrado_req5(catalog, country, initial_date, final_date):
+    mapa = catalog['pedidos_por_pais']
+    array_list = mlp.get(mapa, country)
+    mapa_productos = mlp.new_map(100, 0.5)
+    recaudo_total_filtro = 0
+    pedidos_en_filtro = 0
+    if array_list is None:
+        return (mapa_productos, recaudo_total_filtro, pedidos_en_filtro)
+    for i in range(0, al.size(array_list)):
+        pedido = al.get_element(array_list, i)
+        order_date = pedido['order_date']
+        if order_date.strip() >= initial_date.strip() and order_date.strip() <= final_date.strip():
+            pedidos_en_filtro += 1
+            recaudo_total_filtro += pedido['amount']
+            producto_en_mapa = mlp.get(mapa_productos, pedido['product'])
+            if producto_en_mapa is None:
+                info = {
+                    'product': pedido['product'],
+                    'num_pedidos': 1,
+                    'total_boxes': pedido['boxes_shipped'],
+                    'total_amount': pedido['amount'],
+                    'suma_price_per_box': pedido['price_per_box'],
+                    'suma_discount': pedido['discount_pct'],
+                    'total_marketing': pedido['marketing_spend'],
+                }
+                mapa_productos = mlp.put(mapa_productos, pedido['product'], info)
+            else:
+                producto_en_mapa['num_pedidos'] += 1
+                producto_en_mapa['total_boxes'] += pedido['boxes_shipped']
+                producto_en_mapa['total_amount'] += pedido['amount']
+                producto_en_mapa['suma_price_per_box'] += pedido['price_per_box']
+                producto_en_mapa['suma_discount'] += pedido['discount_pct']
+                producto_en_mapa['total_marketing'] += pedido['marketing_spend']
+    return (mapa_productos, recaudo_total_filtro, pedidos_en_filtro)
+
+def req_5(catalog, N, country, initial_date, final_date):
     """
     Retorna el resultado del requerimiento 5
     """
-    # TODO: Modificar el requerimiento 5
-    pass
+    start_time = get_time()
+    mapa_productos, recaudo_total_filtro, pedidos_en_filtro = filtrado_req5(catalog, country, initial_date, final_date)
+    values = mlp.value_set(mapa_productos)
+    
+    ordered_products = al.quick_sort(values, sort_crit_recaudo_total)
+    if N >= mlp.size(mapa_productos):
+        top = al.sub_list(ordered_products, 0, mlp.size(mapa_productos))
+    else:
+        top = al.sub_list(ordered_products, 0, N)
+    for i in range(0, al.size(top)):
+        registro = al.get_element(top, i)
+        registro['promedio_price_per_box'] = registro['suma_price_per_box'] / registro['num_pedidos']
+        registro['promedio_discount_pct'] = registro['suma_discount'] / registro['num_pedidos']
+    result = {
+        'tiempo_ejecucion': None,
+        'num_total_pedidos_filtro': pedidos_en_filtro,
+        'num_productos_diferentes': mlp.size(mapa_productos),
+        'total_recaudo_pedidos_filtrados': recaudo_total_filtro,
+        'productos_top': top
+        
+    }
+    end_time = get_time()
+    result['tiempo_ejecucion'] = delta_time(start_time, end_time)
+    return result
 
 def req_6(catalog):
     """
