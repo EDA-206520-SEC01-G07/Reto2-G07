@@ -23,11 +23,7 @@ def new_logic():
             "pedidos_por_canal": mlp.new_map(3, 0.5)
         },
         # Mapas de los requerimientos
-        "pedidos_por_mes": mlp.new_map(24, 0.5),             # Req 1: llave "YYYY-MM"
-        "pedidos_por_pais": mlp.new_map(5, 0.5),             # Req 2: llave pais
-        "pedidos_por_fecha": mlp.new_map(730, 0.5),          # Req 3: llave "YYYY-MM-DD"
-        "pedidos_por_producto_pais": mlp.new_map(300, 0.5),  # Req 4: llave (producto, pais)
-        "pedidos_por_producto": mlp.new_map(30, 0.5)         # Req 6: llave producto
+        "pedidos_por_pais": mlp.new_map(5, 0.5)
     }
     return catalog
 
@@ -44,8 +40,25 @@ def load_data(catalog, filename):
             pedido = crear_pedido(row)
             al.add_last(catalog["pedidos"], pedido)
             actualizar_reporte_carga(catalog, pedido)
-            agregar_pedido_a_mapas(catalog, pedido)
-
+            # agregar_pedido_a_mapas(catalog, pedido)
+            # mapa req 1:
+            
+            # mapa req 2:
+            pedidos_pais = mlp.get(catalog['pedidos_por_pais'], pedido['country'])
+            if pedidos_pais is None:
+                lista = al.new_list()
+                al.add_last(lista, pedido)
+                catalog['pedidos_por_pais'] = mlp.put(catalog['pedidos_por_pais'], pedido['country'], lista)
+            else:
+                al.add_last(pedidos_pais, pedido)
+            # mapa req 3:
+            
+            # mapa req 4:
+            
+            # mapa req 5:
+            
+            # mapa req 6:
+                
     primeros, ultimos = first_last_5_pedidos(catalog)
     end = get_time()
 
@@ -458,71 +471,40 @@ def mejor_pedido_req4(pedido1, pedido2):
 
 def req_4(catalog, producto, pais):
     """
-    Retorna el resultado del requerimiento 4: estadisticas de la combinacion
-    Producto-Pais y los 2 pedidos de mayor Amount.
-
-    Complejidad: O(1) para el get de la llave (producto, pais) + O(k) para
-    recorrer el grupo una sola vez (sumas y top 2), donde k = pedidos de la
-    combinacion. No hace falta ordenar: el top 2 se mantiene en una pasada.
+    Retorna el resultado del requerimiento 4
     """
-    start = get_time()
-    candidatos = mlp.get(catalog["pedidos_por_producto_pais"], (producto, pais))
-    suma_precio = 0
-    suma_descuento = 0
-    suma_marketing = 0
-    suma_cajas = 0
-    primero = None
-    segundo = None
-    total = 0
-    if candidatos is not None:
-        total = al.size(candidatos)
-        for i in range(total):
-            pedido = al.get_element(candidatos, i)
-            suma_precio += pedido["price_per_box"]
-            suma_descuento += pedido["discount_pct"]
-            suma_marketing += pedido["marketing_spend"]
-            suma_cajas += pedido["boxes_shipped"]
-            if primero is None or mejor_pedido_req4(pedido, primero):
-                segundo = primero
-                primero = pedido
-            elif segundo is None or mejor_pedido_req4(pedido, segundo):
-                segundo = pedido
-    top_2 = al.new_list()
-    if primero is not None:
-        al.add_last(top_2, primero)
-    if segundo is not None:
-        al.add_last(top_2, segundo)
-    if total > 0:
-        promedio_precio = suma_precio / total
-        promedio_descuento = suma_descuento / total
-        promedio_marketing = suma_marketing / total
-        promedio_cajas = suma_cajas / total
-    else:
-        promedio_precio = 0
-        promedio_descuento = 0
-        promedio_marketing = 0
-        promedio_cajas = 0
-    end = get_time()
-    return {
-        "tiempo_ms": delta_time(start, end),
-        "total_pedidos": total,
-        "promedio_precio": promedio_precio,
-        "promedio_descuento": promedio_descuento,
-        "promedio_marketing": promedio_marketing,
-        "promedio_cajas": promedio_cajas,
-        "top_2": top_2
-    }
+    # TODO: Modificar el requerimiento 4
+    pass
 
-# =====================================================================
-# Requerimiento 5 (pendiente)
-# =====================================================================
 
 def req_5(catalog):
     """
     Retorna el resultado del requerimiento 5
     """
-    # TODO: Modificar el requerimiento 5
-    pass
+    start_time = get_time()
+    mapa_productos, recaudo_total_filtro, pedidos_en_filtro = filtrado_req5(catalog, country, initial_date, final_date)
+    values = mlp.value_set(mapa_productos)
+    
+    ordered_products = al.quick_sort(values, sort_crit_recaudo_total)
+    if N >= mlp.size(mapa_productos):
+        top = al.sub_list(ordered_products, 0, mlp.size(mapa_productos))
+    else:
+        top = al.sub_list(ordered_products, 0, N)
+    for i in range(0, al.size(top)):
+        registro = al.get_element(top, i)
+        registro['promedio_price_per_box'] = registro['suma_price_per_box'] / registro['num_pedidos']
+        registro['promedio_discount_pct'] = registro['suma_discount'] / registro['num_pedidos']
+    result = {
+        'tiempo_ejecucion': None,
+        'num_total_pedidos_filtro': pedidos_en_filtro,
+        'num_productos_diferentes': mlp.size(mapa_productos),
+        'total_recaudo_pedidos_filtrados': recaudo_total_filtro,
+        'productos_top': top
+        
+    }
+    end_time = get_time()
+    result['tiempo_ejecucion'] = delta_time(start_time, end_time)
+    return result
 
 # =====================================================================
 # Requerimiento 6
